@@ -1,1 +1,33 @@
+name: Android APK Build
 
+'on':
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu indir
+        uses: actions/checkout@v3
+
+      - name: Java 17 kur
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle izinleri ver
+        run: chmod +x gradlew
+
+      - name: APK derle
+        run: ./gradlew assembleDebug
+
+      - name: APK kaydet
+        uses: actions/upload-artifact@v3
+        with:
+          name: DeviceTracker-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
