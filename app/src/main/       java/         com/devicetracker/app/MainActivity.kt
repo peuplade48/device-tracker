@@ -25,7 +25,7 @@ import java.net.URL
 class MainActivity : AppCompatActivity() {
 
     // ⚠️ BURAYA KENDİ SUNUCU ADRESİNİZİ YAZIN
-    private val SERVER_URL = "https://SUNUCUNUZ.COM/api/device_report.php"
+    private val SERVER_URL = "https://10.1.1.46/api/device_report.php"
 
     // Kaç dakikada bir veri gönderilsin?
     private val SEND_INTERVAL_MINUTES = 5L
