@@ -1,11 +1,2 @@
 rootProject.name = "DeviceTracker"
 include ':app'
-```
-
----
-
-**Dosya 3:** `gradle.properties`
-```
-android.useAndroidX=true
-android.enableJetifier=true
-org.gradle.jvmargs=-Xmx2048m
