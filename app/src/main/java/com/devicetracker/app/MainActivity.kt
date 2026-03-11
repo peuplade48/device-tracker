@@ -21,6 +21,7 @@ import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -29,8 +30,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * MainActivity: Cihaz bilgilerini toplar ve merkezi sunucuya raporlar.
+ * Yerel ağ (10.x.x.x) bağlantı sorunları için optimize edilmiştir.
+ */
 class MainActivity : AppCompatActivity() {
 
+    // Sunucu adresi. Eğer sunucuda SSL yoksa http:// olarak kalmalıdır.
+    // Hata 443 portundan geliyorsa, sunucu tarafında HTTPS zorunluluğunu kontrol edin.
     private val SERVER_URL = "http://10.1.1.46/api/device_report.php"
     private val SEND_INTERVAL_MINUTES = 5L
     private val handler = Handler(Looper.getMainLooper())
@@ -42,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Arayüz Kurulumu
         val scroll = ScrollView(this)
         val layout = LinearLayout(this)
         layout.orientation = LinearLayout.VERTICAL
@@ -49,22 +57,22 @@ class MainActivity : AppCompatActivity() {
         layout.setBackgroundColor(Color.parseColor("#1a1a2e"))
 
         val tvTitle = TextView(this)
-        tvTitle.text = "Device Tracker"
-        tvTitle.textSize = 26f
+        tvTitle.text = "Cihaz Takip Sistemi"
+        tvTitle.textSize = 24f
         tvTitle.setTextColor(Color.WHITE)
         tvTitle.gravity = Gravity.CENTER
         tvTitle.setPadding(0, 0, 0, 48)
 
         tvStatus = TextView(this)
-        tvStatus.text = "Baglaniyor..."
-        tvStatus.textSize = 16f
+        tvStatus.text = "Başlatılıyor..."
+        tvStatus.textSize = 14f
         tvStatus.setTextColor(Color.WHITE)
         tvStatus.gravity = Gravity.CENTER
         tvStatus.setBackgroundColor(Color.parseColor("#16213e"))
         tvStatus.setPadding(32, 32, 32, 32)
 
         tvLastSent = TextView(this)
-        tvLastSent.text = "Son gonderim: -"
+        tvLastSent.text = "Son güncelleme: -"
         tvLastSent.textSize = 13f
         tvLastSent.setTextColor(Color.parseColor("#aaaaaa"))
         tvLastSent.gravity = Gravity.CENTER
@@ -91,23 +99,28 @@ class MainActivity : AppCompatActivity() {
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return "Marka: ${Build.BRAND} ${Build.MODEL}\n" +
-               "Android: ${Build.VERSION.RELEASE}\n" +
-               "ID: ${androidId.take(12)}...\n" +
-               "Batarya: %$battery"
+        return "Marka/Model: ${Build.MANUFACTURER} ${Build.MODEL}\n" +
+                "Android Sürümü: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
+                "Cihaz ID: ${androidId.take(12)}...\n" +
+                "Batarya Durumu: %$battery"
     }
 
     private fun checkAndRequestPermissions() {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.INTERNET,
+            Manifest.permission.ACCESS_NETWORK_STATE
         )
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
+
         val notGranted = permissions.filter {
             ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
+
         if (notGranted.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, notGranted.toTypedArray(), 100)
         } else {
@@ -115,42 +128,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         startTracking()
     }
 
     private fun startTracking() {
-        updateStatus("Ilk veri gonderiliyor...")
+        updateStatus("Veri gönderimi aktif...")
         sendDeviceData()
-        handler.postDelayed(object : Runnable {
+        
+        val runnable = object : Runnable {
             override fun run() {
                 sendDeviceData()
                 handler.postDelayed(this, SEND_INTERVAL_MINUTES * 60 * 1000)
             }
-        }, SEND_INTERVAL_MINUTES * 60 * 1000)
+        }
+        handler.postDelayed(runnable, SEND_INTERVAL_MINUTES * 60 * 1000)
     }
 
     private fun updateStatus(msg: String) {
         runOnUiThread {
             tvStatus.text = msg
             val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            tvLastSent.text = "Son guncelleme: ${sdf.format(Date())}"
+            tvLastSent.text = "Son güncelleme: ${sdf.format(Date())}"
             tvInfo.text = getDeviceInfoText()
         }
     }
 
     private fun sendDeviceData() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             sendToServer(buildJson(null, null))
             return
         }
+
         LocationServices.getFusedLocationProviderClient(this).lastLocation
             .addOnSuccessListener { location ->
                 sendToServer(buildJson(location?.latitude, location?.longitude))
@@ -163,56 +173,57 @@ class MainActivity : AppCompatActivity() {
     private fun buildJson(lat: Double?, lng: Double?): JSONObject {
         val json = JSONObject()
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        
         json.put("android_id", androidId)
-        val serial = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Build.getSerial()
-            else {
-                @Suppress("DEPRECATION")
-                Build.SERIAL
-            }
-        } catch (e: Exception) {
-            "UNKNOWN"
-        }
-        json.put("serial_number", serial)
         json.put("brand", Build.BRAND)
-        json.put("manufacturer", Build.MANUFACTURER)
         json.put("model", Build.MODEL)
         json.put("android_version", Build.VERSION.RELEASE)
-        json.put("sdk_version", Build.VERSION.SDK_INT)
+        
         if (lat != null && lng != null) {
             json.put("latitude", lat)
             json.put("longitude", lng)
-        } else {
-            json.put("latitude", JSONObject.NULL)
-            json.put("longitude", JSONObject.NULL)
         }
+        
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         json.put("battery_level", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
-        json.put("is_charging", bm.isCharging)
         json.put("timestamp", System.currentTimeMillis() / 1000)
+        
         return json
     }
 
     private fun sendToServer(json: JSONObject) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val conn = URL(SERVER_URL).openConnection() as HttpURLConnection
+                val url = URL(SERVER_URL)
+                val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.setRequestProperty("Accept", "application/json")
                 conn.doOutput = true
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
+                
+                // Yerel ağ kararlılığı için zaman aşımı artırıldı
+                conn.connectTimeout = 15000 
+                conn.readTimeout = 15000
+                
                 OutputStreamWriter(conn.outputStream).use { it.write(json.toString()) }
+                
                 val code = conn.responseCode
+                val responseMsg = conn.responseMessage
                 conn.disconnect()
-                if (code == 200) {
-                    updateStatus("Sunucuya baglandi - OK")
-                } else {
-                    updateStatus("Sunucu hatasi: HTTP $code")
+
+                withContext(Dispatchers.Main) {
+                    if (code in 200..299) {
+                        updateStatus("Başarılı: Veri iletildi")
+                    } else {
+                        updateStatus("Sunucu Hatası: HTTP $code\n($responseMsg)")
+                    }
                 }
             } catch (e: Exception) {
-                Log.e("DeviceTracker", "Hata: ${e.message}")
-                updateStatus("Baglanti hatasi: ${e.message}")
+                Log.e("DeviceTracker", "Bağlantı Hatası", e)
+                withContext(Dispatchers.Main) {
+                    val errorDetail = e.message ?: "Bilinmeyen hata"
+                    updateStatus("Bağlantı Hatası!\nSunucuya (10.1.1.46) ulaşılamıyor.\nDetay: $errorDetail")
+                }
             }
         }
     }
