@@ -33,13 +33,13 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    // Sunucu adresi - IP'nizi buradan kontrol edin
+    // Sunucu adresi - IP adresinizin doğruluğunu kontrol edin
     private val SERVER_URL = "http://10.1.1.46/api/device_report.php"
     private val SEND_INTERVAL_MINUTES = 5L
     private val TAG = "DeviceTracker"
     
     // ELLE GİRİLEN SÜRÜM NUMARASI
-    private val MANUAL_VERSION_NAME = "2.0.1-TEST"
+    private val MANUAL_VERSION_NAME = "3.0-MANUAL-FIX"
 
     private val handler = Handler(Looper.getMainLooper())
     private var isTaskRunning = false
@@ -52,39 +52,39 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Dinamik Arayüz Kurulumu
+        // Dinamik Arayüz Tasarımı
         val scroll = ScrollView(this)
         val layout = LinearLayout(this)
         layout.orientation = LinearLayout.VERTICAL
         layout.setPadding(40, 60, 40, 40)
-        layout.setBackgroundColor(Color.parseColor("#0f3460"))
+        layout.setBackgroundColor(Color.parseColor("#121212"))
 
         val tvTitle = TextView(this)
-        tvTitle.text = "Cihaz Takip Sistemi"
+        tvTitle.text = "Cihaz Takip Sistemi v3"
         tvTitle.textSize = 22f
         tvTitle.setTextColor(Color.WHITE)
         tvTitle.gravity = Gravity.CENTER
         tvTitle.setPadding(0, 0, 0, 30)
 
         tvStatus = TextView(this)
-        tvStatus.text = "Sistem Başlatılıyor..."
+        tvStatus.text = "Arayüz Hazırlandı..."
         tvStatus.textSize = 16f
-        tvStatus.setTextColor(Color.YELLOW)
+        tvStatus.setTextColor(Color.CYAN)
         tvStatus.gravity = Gravity.CENTER
         tvStatus.setPadding(20, 20, 20, 20)
 
         tvLastSent = TextView(this)
-        tvLastSent.text = "Son Güncelleme: Bekleniyor"
+        tvLastSent.text = "Başlatılıyor..."
         tvLastSent.textSize = 12f
-        tvLastSent.setTextColor(Color.LTGRAY)
+        tvLastSent.setTextColor(Color.GRAY)
         tvLastSent.gravity = Gravity.CENTER
 
-        // HATA MESAJLARINI GÖRECEĞİMİZ ALAN
+        // CANLI LOG EKRANI
         tvErrorLog = TextView(this)
-        tvErrorLog.text = "Log Ekranı: Hata yok"
-        tvErrorLog.textSize = 12f
-        tvErrorLog.setTextColor(Color.RED)
-        tvErrorLog.setBackgroundColor(Color.parseColor("#1a1a2e"))
+        tvErrorLog.text = "LOG: Uygulama başlatıldı."
+        tvErrorLog.textSize = 11f
+        tvErrorLog.setTextColor(Color.parseColor("#ff6b6b"))
+        tvErrorLog.setBackgroundColor(Color.parseColor("#1a1a1a"))
         tvErrorLog.setPadding(20, 20, 20, 20)
         val errorLayoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -94,9 +94,9 @@ class MainActivity : AppCompatActivity() {
         tvErrorLog.layoutParams = errorLayoutParams
 
         tvInfo = TextView(this)
-        tvInfo.text = getDeviceInfoText()
+        tvInfo.text = "Sistem bilgileri okunuyor..."
         tvInfo.textSize = 13f
-        tvInfo.setTextColor(Color.WHITE)
+        tvInfo.setTextColor(Color.LTGRAY)
         tvInfo.setPadding(20, 20, 20, 20)
 
         layout.addView(tvTitle)
@@ -107,39 +107,54 @@ class MainActivity : AppCompatActivity() {
         scroll.addView(layout)
         setContentView(scroll)
 
-        checkAndRequestPermissions()
+        // TAKILMAYI ÖNLEME: 1.5 saniye sonra işlemleri başlat
+        handler.postDelayed({
+            tvInfo.text = getDeviceInfoText()
+            checkAndRequestPermissions()
+        }, 1500)
     }
 
     private fun getDeviceInfoText(): String {
-        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-        return "Üretici: ${Build.MANUFACTURER}\n" +
-                "Model: ${Build.MODEL}\n" +
-                "Manuel Sürüm: $MANUAL_VERSION_NAME\n" +
-                "Android: ${Build.VERSION.RELEASE}\n" +
-                "ID: $androidId"
+        return try {
+            val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+            "Üretici: ${Build.MANUFACTURER}\n" +
+            "Model: ${Build.MODEL}\n" +
+            "Elle Girilen Sürüm: $MANUAL_VERSION_NAME\n" +
+            "Android OS: ${Build.VERSION.RELEASE}\n" +
+            "ID: $androidId"
+        } catch (e: Exception) {
+            "Bilgi okuma hatası: ${e.message}"
+        }
     }
 
     private fun checkAndRequestPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.INTERNET
-        )
-        
-        val needsPermission = permissions.any {
-            ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
+        try {
+            logMessage("İzinler kontrol ediliyor...")
+            val permissions = arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.INTERNET
+            )
+            
+            val needsPermission = permissions.any {
+                ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }
 
-        if (needsPermission) {
-            logError("İzinler eksik, kullanıcıdan onay bekleniyor...")
-            ActivityCompat.requestPermissions(this, permissions, 100)
-        } else {
-            startTracking()
+            if (needsPermission) {
+                updateStatus("İzin Onayı Bekleniyor...")
+                ActivityCompat.requestPermissions(this, permissions, 100)
+            } else {
+                logMessage("İzinler OK. Takip başlıyor.")
+                startTracking()
+            }
+        } catch (e: Exception) {
+            logMessage("İzin İsteme Hatası: ${e.message}")
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        logMessage("İzin isteği sonuçlandı. Başlatılıyor...")
         startTracking()
     }
 
@@ -151,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         
         val runnable = object : Runnable {
             override fun run() {
-                lifecycleScopeSend()
+                executeTask()
                 handler.postDelayed(this, SEND_INTERVAL_MINUTES * 60 * 1000)
             }
         }
@@ -162,41 +177,47 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             tvStatus.text = msg
             val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            tvLastSent.text = "Son işlem: ${sdf.format(Date())}"
+            tvLastSent.text = "Son İşlem: ${sdf.format(Date())}"
         }
     }
 
-    private fun logError(error: String) {
+    private fun logMessage(msg: String) {
         runOnUiThread {
-            tvErrorLog.text = "HATA/LOG:\n$error"
-            Log.e(TAG, error)
+            val ts = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val current = tvErrorLog.text.toString()
+            tvErrorLog.text = "[$ts] $msg\n---\n$current".take(1200)
+            Log.d(TAG, msg)
         }
     }
 
-    private fun lifecycleScopeSend() {
+    private fun executeTask() {
         CoroutineScope(Dispatchers.Main).launch {
-            updateStatus("Konum Alınmaya Çalışılıyor...")
-            
-            val fusedClient = LocationServices.getFusedLocationProviderClient(this@MainActivity)
-            
-            if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                logError("Konum izni verilmediği için koordinat alınamadı.")
-                sendToServer(buildJson(0.0, 0.0, 0f))
-                return@launch
-            }
-
-            // Takılmayı önlemek için basit bir lastLocation kontrolü
-            fusedClient.lastLocation.addOnSuccessListener { loc ->
-                if (loc != null) {
-                    updateStatus("Konum bulundu, gönderiliyor...")
-                    sendToServer(buildJson(loc.latitude, loc.longitude, loc.accuracy))
-                } else {
-                    logError("GPS yanıt vermedi, 0.0 koordinatları gidiyor.")
+            try {
+                updateStatus("Konum Alınıyor...")
+                val fusedClient = LocationServices.getFusedLocationProviderClient(this@MainActivity)
+                
+                if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    logMessage("Konum izni yok. Boş koordinat gönderiliyor.")
                     sendToServer(buildJson(0.0, 0.0, 0f))
+                    return@launch
                 }
-            }.addOnFailureListener {
-                logError("Konum servisi başarısız: ${it.message}")
-                sendToServer(buildJson(0.0, 0.0, 0f))
+
+                fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                    .addOnSuccessListener { loc ->
+                        if (loc != null) {
+                            updateStatus("Konum Alındı. Gönderiliyor...")
+                            sendToServer(buildJson(loc.latitude, loc.longitude, loc.accuracy))
+                        } else {
+                            logMessage("GPS/Konum sinyali boş döndü.")
+                            sendToServer(buildJson(0.0, 0.0, 0f))
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        logMessage("Konum API Hatası: ${e.message}")
+                        sendToServer(buildJson(0.0, 0.0, 0f))
+                    }
+            } catch (e: Exception) {
+                logMessage("Görev Hatası: ${e.message}")
             }
         }
     }
@@ -213,7 +234,7 @@ class MainActivity : AppCompatActivity() {
             json.put("manufacturer", Build.MANUFACTURER)
             json.put("model", Build.MODEL)
             
-            // ELLE GİRİLEN SÜRÜM BURADA GİDİYOR
+            // MANUEL SÜRÜM
             json.put("android_version", MANUAL_VERSION_NAME) 
             json.put("sdk_version", Build.VERSION.SDK_INT)
             
@@ -224,8 +245,9 @@ class MainActivity : AppCompatActivity() {
             json.put("battery_level", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
             json.put("is_charging", bm.isCharging)
             
+            logMessage("Veri paketi oluşturuldu.")
         } catch (e: Exception) {
-            logError("JSON Oluşturma Hatası: ${e.message}")
+            logMessage("JSON Hatası: ${e.message}")
         }
         return json
     }
@@ -233,14 +255,15 @@ class MainActivity : AppCompatActivity() {
     private fun sendToServer(json: JSONObject) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                updateStatus("Sunucuya bağlanılıyor...")
+                withContext(Dispatchers.Main) { updateStatus("Sunucuya bağlanılıyor...") }
+                
                 val url = URL(SERVER_URL)
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 conn.doOutput = true
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
                 
                 OutputStreamWriter(conn.outputStream).use { it.write(json.toString()) }
                 
@@ -254,17 +277,17 @@ class MainActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     if (code == 200) {
-                        updateStatus("Başarılı ✅")
-                        logError("Sunucu Yanıtı: $response")
+                        updateStatus("Veri Gönderildi ✅")
+                        logMessage("Sunucu Yanıtı: $response")
                     } else {
-                        updateStatus("Hata: HTTP $code ❌")
-                        logError("Sunucu Hatası ($code): $response")
+                        updateStatus("Sunucu Hatası: $code")
+                        logMessage("Sunucu Hatası ($code): $response")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    updateStatus("Bağlantı Başarısız ⚠️")
-                    logError("İnternet/Bağlantı Hatası: ${e.message}\nIP Adresini ve WiFi'yi kontrol edin.")
+                    updateStatus("Bağlantı Hatası ⚠️")
+                    logMessage("Ağ Hatası: ${e.message}\nIP/WiFi kontrolü yapın.")
                 }
             }
         }
