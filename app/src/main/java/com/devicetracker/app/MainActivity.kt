@@ -12,95 +12,75 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
-import android.widget.*
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    // ⚠️ SUNUCU ADRESİNİZİ BURAYA YAZIN
     private val SERVER_URL = "https://10.1.1.46/api/device_report.php"
     private val SEND_INTERVAL_MINUTES = 5L
-
     private val handler = Handler(Looper.getMainLooper())
-    private var statusText: TextView? = null
-    private var lastSentText: TextView? = null
-    private var infoText: TextView? = null
+
+    private lateinit var tvStatus: TextView
+    private lateinit var tvLastSent: TextView
+    private lateinit var tvInfo: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val scroll = ScrollView(this)
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(60, 80, 60, 60)
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
-        }
+        val layout = LinearLayout(this)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.setPadding(60, 80, 60, 60)
+        layout.setBackgroundColor(Color.parseColor("#1a1a2e"))
 
-        val title = TextView(this).apply {
-            text = "📱 Device Tracker"
-            textSize = 26f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 8)
-        }
+        val tvTitle = TextView(this)
+        tvTitle.text = "Device Tracker"
+        tvTitle.textSize = 26f
+        tvTitle.setTextColor(Color.WHITE)
+        tvTitle.gravity = Gravity.CENTER
+        tvTitle.setPadding(0, 0, 0, 48)
 
-        val subtitle = TextView(this).apply {
-            text = "Cihaz takip sistemi aktif"
-            textSize = 14f
-            setTextColor(Color.parseColor("#aaaaaa"))
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 48)
-        }
+        tvStatus = TextView(this)
+        tvStatus.text = "Baglaniyor..."
+        tvStatus.textSize = 16f
+        tvStatus.setTextColor(Color.WHITE)
+        tvStatus.gravity = Gravity.CENTER
+        tvStatus.setBackgroundColor(Color.parseColor("#16213e"))
+        tvStatus.setPadding(32, 32, 32, 32)
 
-        statusText = TextView(this).apply {
-            text = "⏳ Bağlanıyor..."
-            textSize = 16f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#16213e"))
-            setPadding(32, 32, 32, 32)
-        }
+        tvLastSent = TextView(this)
+        tvLastSent.text = "Son gonderim: -"
+        tvLastSent.textSize = 13f
+        tvLastSent.setTextColor(Color.parseColor("#aaaaaa"))
+        tvLastSent.gravity = Gravity.CENTER
+        tvLastSent.setPadding(0, 24, 0, 24)
 
-        lastSentText = TextView(this).apply {
-            text = "Son gönderim: —"
-            textSize = 13f
-            setTextColor(Color.parseColor("#aaaaaa"))
-            gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 24)
-        }
+        tvInfo = TextView(this)
+        tvInfo.text = getDeviceInfoText()
+        tvInfo.textSize = 13f
+        tvInfo.setTextColor(Color.parseColor("#cccccc"))
+        tvInfo.setBackgroundColor(Color.parseColor("#16213e"))
+        tvInfo.setPadding(32, 32, 32, 32)
 
-        infoText = TextView(this).apply {
-            text = getDeviceInfoText()
-            textSize = 13f
-            setTextColor(Color.parseColor("#cccccc"))
-            setBackgroundColor(Color.parseColor("#16213e"))
-            setPadding(32, 32, 32, 32)
-            lineSpacingMultiplier = 1.6f
-        }
-
-        val intervalText = TextView(this).apply {
-            text = "🔄 Her $SEND_INTERVAL_MINUTES dakikada bir veri gönderilir"
-            textSize = 12f
-            setTextColor(Color.parseColor("#666666"))
-            gravity = Gravity.CENTER
-            setPadding(0, 32, 0, 0)
-        }
-
-        layout.addView(title)
-        layout.addView(subtitle)
-        layout.addView(statusText)
-        layout.addView(lastSentText)
-        layout.addView(infoText)
-        layout.addView(intervalText)
+        layout.addView(tvTitle)
+        layout.addView(tvStatus)
+        layout.addView(tvLastSent)
+        layout.addView(tvInfo)
         scroll.addView(layout)
         setContentView(scroll)
 
@@ -109,17 +89,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun getDeviceInfoText(): String {
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-        val serial = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Build.getSerial()
-            else @Suppress("DEPRECATION") Build.SERIAL
-        } catch (e: Exception) { "UNKNOWN" }
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return "🏷️  Marka: ${Build.BRAND} ${Build.MODEL}\n" +
-               "🔢  Seri No: $serial\n" +
-               "🤖  Android: ${Build.VERSION.RELEASE}\n" +
-               "🔑  ID: ${androidId.take(12)}...\n" +
-               "🔋  Batarya: %$battery"
+        return "Marka: ${Build.BRAND} ${Build.MODEL}\n" +
+               "Android: ${Build.VERSION.RELEASE}\n" +
+               "ID: ${androidId.take(12)}...\n" +
+               "Batarya: %$battery"
     }
 
     private fun checkAndRequestPermissions() {
@@ -140,13 +115,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         startTracking()
     }
 
     private fun startTracking() {
-        updateStatus("🔄 İlk veri gönderiliyor...", "#f59e0b")
+        updateStatus("Ilk veri gonderiliyor...")
         sendDeviceData()
         handler.postDelayed(object : Runnable {
             override fun run() {
@@ -156,19 +135,19 @@ class MainActivity : AppCompatActivity() {
         }, SEND_INTERVAL_MINUTES * 60 * 1000)
     }
 
-    private fun updateStatus(msg: String, colorHex: String) {
+    private fun updateStatus(msg: String) {
         runOnUiThread {
-            statusText?.text = msg
-            statusText?.setBackgroundColor(Color.parseColor(colorHex))
+            tvStatus.text = msg
             val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            lastSentText?.text = "Son güncelleme: ${sdf.format(Date())}"
-            infoText?.text = getDeviceInfoText()
+            tvLastSent.text = "Son guncelleme: ${sdf.format(Date())}"
+            tvInfo.text = getDeviceInfoText()
         }
     }
 
     private fun sendDeviceData() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             sendToServer(buildJson(null, null))
             return
         }
@@ -183,19 +162,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildJson(lat: Double?, lng: Double?): JSONObject {
         val json = JSONObject()
-        json.put("android_id", Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        json.put("android_id", androidId)
         val serial = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Build.getSerial()
-            else @Suppress("DEPRECATION") Build.SERIAL
-        } catch (e: Exception) { "UNKNOWN" }
+            else {
+                @Suppress("DEPRECATION")
+                Build.SERIAL
+            }
+        } catch (e: Exception) {
+            "UNKNOWN"
+        }
         json.put("serial_number", serial)
         json.put("brand", Build.BRAND)
         json.put("manufacturer", Build.MANUFACTURER)
         json.put("model", Build.MODEL)
         json.put("android_version", Build.VERSION.RELEASE)
         json.put("sdk_version", Build.VERSION.SDK_INT)
-        json.put("latitude", lat ?: JSONObject.NULL)
-        json.put("longitude", lng ?: JSONObject.NULL)
+        if (lat != null && lng != null) {
+            json.put("latitude", lat)
+            json.put("longitude", lng)
+        } else {
+            json.put("latitude", JSONObject.NULL)
+            json.put("longitude", JSONObject.NULL)
+        }
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         json.put("battery_level", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
         json.put("is_charging", bm.isCharging)
@@ -216,13 +206,13 @@ class MainActivity : AppCompatActivity() {
                 val code = conn.responseCode
                 conn.disconnect()
                 if (code == 200) {
-                    updateStatus("✅ Sunucuya bağlandı", "#10b981")
+                    updateStatus("Sunucuya baglandi - OK")
                 } else {
-                    updateStatus("⚠️ Sunucu hatası: HTTP $code", "#f59e0b")
+                    updateStatus("Sunucu hatasi: HTTP $code")
                 }
             } catch (e: Exception) {
                 Log.e("DeviceTracker", "Hata: ${e.message}")
-                updateStatus("❌ Bağlantı hatası", "#ef4444")
+                updateStatus("Baglanti hatasi: ${e.message}")
             }
         }
     }
