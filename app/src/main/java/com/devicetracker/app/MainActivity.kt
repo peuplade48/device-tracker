@@ -31,7 +31,7 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private val SERVER_URL = "https://10.1.1.46/api/device_report.php"
+    private val SERVER_URL = "http://10.1.1.46/api/device_report.php"
     private val SEND_INTERVAL_MINUTES = 5L
     private val handler = Handler(Looper.getMainLooper())
 
