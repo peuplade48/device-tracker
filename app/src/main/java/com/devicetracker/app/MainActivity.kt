@@ -31,14 +31,13 @@ class MainActivity : AppCompatActivity() {
     private val SEND_INTERVAL_MINUTES = 5L
 
     private val handler = Handler(Looper.getMainLooper())
-    private lateinit var statusText: TextView
-    private lateinit var lastSentText: TextView
-    private lateinit var infoText: TextView
+    private var statusText: TextView? = null
+    private var lastSentText: TextView? = null
+    private var infoText: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Basit UI oluştur
         val scroll = ScrollView(this)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -46,7 +45,6 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#1a1a2e"))
         }
 
-        // Başlık
         val title = TextView(this).apply {
             text = "📱 Device Tracker"
             textSize = 26f
@@ -63,7 +61,6 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 48)
         }
 
-        // Durum kutusu
         statusText = TextView(this).apply {
             text = "⏳ Bağlanıyor..."
             textSize = 16f
@@ -73,7 +70,6 @@ class MainActivity : AppCompatActivity() {
             setPadding(32, 32, 32, 32)
         }
 
-        // Son gönderim
         lastSentText = TextView(this).apply {
             text = "Son gönderim: —"
             textSize = 13f
@@ -82,7 +78,6 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 24, 0, 24)
         }
 
-        // Cihaz bilgileri
         infoText = TextView(this).apply {
             text = getDeviceInfoText()
             textSize = 13f
@@ -118,17 +113,13 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Build.getSerial()
             else @Suppress("DEPRECATION") Build.SERIAL
         } catch (e: Exception) { "UNKNOWN" }
-
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-
-        return """
-🏷️  Marka:  ${Build.BRAND} ${Build.MODEL}
-🔢  Seri No:  $serial
-🤖  Android:  ${Build.VERSION.RELEASE}
-🔑  Android ID:  ${androidId.take(12)}...
-🔋  Batarya:  %$battery
-        """.trimIndent()
+        return "🏷️  Marka: ${Build.BRAND} ${Build.MODEL}\n" +
+               "🔢  Seri No: $serial\n" +
+               "🤖  Android: ${Build.VERSION.RELEASE}\n" +
+               "🔑  ID: ${androidId.take(12)}...\n" +
+               "🔋  Batarya: %$battery"
     }
 
     private fun checkAndRequestPermissions() {
@@ -165,15 +156,13 @@ class MainActivity : AppCompatActivity() {
         }, SEND_INTERVAL_MINUTES * 60 * 1000)
     }
 
-    private fun updateStatus(msg: String, color: String) {
+    private fun updateStatus(msg: String, colorHex: String) {
         runOnUiThread {
-            statusText.text = msg
-            statusText.setBackgroundColor(Color.parseColor(color.replace("#", "#33").padEnd(9, '0').let {
-                "#${color.removePrefix("#")}"
-            }))
+            statusText?.text = msg
+            statusText?.setBackgroundColor(Color.parseColor(colorHex))
             val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            lastSentText.text = "Son güncelleme: ${sdf.format(Date())}"
-            infoText.text = getDeviceInfoText()
+            lastSentText?.text = "Son güncelleme: ${sdf.format(Date())}"
+            infoText?.text = getDeviceInfoText()
         }
     }
 
@@ -233,7 +222,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("DeviceTracker", "Hata: ${e.message}")
-                updateStatus("❌ Bağlantı hatası\n${e.message}", "#ef4444")
+                updateStatus("❌ Bağlantı hatası", "#ef4444")
             }
         }
     }
