@@ -36,7 +36,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private val SERVER_URL       = "http://10.1.1.46/api/device_report.php"
-    private val ZIMMET_URL       = "http://10.1.1.46/sayac_term.php"
+    private val ZIMMET_URL       = "http://10.1.1.46/sayac/sayac_term.php"
     private val SEND_INTERVAL_MINUTES = 5L
 
     private val handler = Handler(Looper.getMainLooper())
