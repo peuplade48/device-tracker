@@ -37,7 +37,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private val SERVER_URL       = "http://10.1.1.46/api/device_report.php"
-    private val ZIMMET_URL       = "http://10.1.1.46/sayac/sayac_term.php"
+    private val ZIMMET_URL       = "http://10.1.1.46/sayac_term.php"
     private val SEND_INTERVAL_MINUTES = 5L
 
     private val handler = Handler(Looper.getMainLooper())
@@ -190,13 +190,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getSerialNumber(): String {
+        // SystemProperties reflection ile ro.serialno — gerçek donanım seri numarası
+        // Build.getSerial() Android 10+'da sistem izni gerektiriyor, bu yöntem gerektirmiyor
+        return try {
+            val cls = Class.forName("android.os.SystemProperties")
+            val get = cls.getMethod("get", String::class.java, String::class.java)
+            val sn = get.invoke(null, "ro.serialno", "") as String
+            if (sn.isNotEmpty()) sn else "UNKNOWN"
+        } catch (e: Exception) {
+            Log.w("DeviceTracker", "ro.serialno okunamadi: ${e.message}")
+            "UNKNOWN"
+        }
+    }
+
     private fun getDeviceInfoText(): String {
-        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        val serial = getSerialNumber()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val battery = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         return "Marka: ${Build.BRAND} ${Build.MODEL}\n" +
                "Android: ${Build.VERSION.RELEASE}\n" +
-               "ID: ${androidId.take(12)}...\n" +
+               "Seri No: $serial\n" +
                "Batarya: %$battery"
     }
 
@@ -263,11 +277,7 @@ class MainActivity : AppCompatActivity() {
         val json = JSONObject()
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         json.put("android_id", androidId)
-        val serial = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Build.getSerial()
-            else { @Suppress("DEPRECATION") Build.SERIAL }
-        } catch (e: Exception) { "UNKNOWN" }
-        json.put("serial_number", serial)
+        json.put("serial_number", getSerialNumber())
         json.put("brand", Build.BRAND)
         json.put("manufacturer", Build.MANUFACTURER)
         json.put("model", Build.MODEL)
