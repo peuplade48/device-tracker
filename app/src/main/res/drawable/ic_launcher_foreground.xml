@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Arka plan dairesi -->
+    <path
+        android:fillColor="#1a6bb5"
+        android:pathData="M54,54m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+
+    <!-- Sayaç gövdesi (dikdörtgen kutu) -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M28,40 L80,40 Q84,40 84,44 L84,72 Q84,76 80,76 L28,76 Q24,76 24,72 L24,44 Q24,40 28,40 Z" />
+
+    <!-- Sayaç üst boru (sol) -->
+    <path
+        android:fillColor="#90caf9"
+        android:pathData="M30,34 L30,42 Q30,40 32,40 L38,40 Q40,40 40,42 L40,34 Q40,32 38,32 L32,32 Q30,32 30,34 Z" />
+
+    <!-- Sayaç üst boru (sağ) -->
+    <path
+        android:fillColor="#90caf9"
+        android:pathData="M68,34 L68,42 Q68,40 70,40 L76,40 Q78,40 78,42 L78,34 Q78,32 76,32 L70,32 Q68,32 68,34 Z" />
+
+    <!-- Üst bağlantı çizgisi -->
+    <path
+        android:fillColor="#90caf9"
+        android:pathData="M30,33 L78,33 Q80,33 80,31 L80,29 Q80,27 78,27 L30,27 Q28,27 28,29 L28,31 Q28,33 30,33 Z" />
+
+    <!-- Sayaç ekranı (gri arka plan) -->
+    <path
+        android:fillColor="#e3f2fd"
+        android:strokeColor="#1a6bb5"
+        android:strokeWidth="1.5"
+        android:pathData="M31,46 L77,46 Q79,46 79,48 L79,62 Q79,64 77,64 L31,64 Q29,64 29,62 L29,48 Q29,46 31,46 Z" />
+
+    <!-- Kadran arka planı -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M54,55m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+
+    <!-- Kadran çerçevesi -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1a6bb5"
+        android:strokeWidth="2"
+        android:pathData="M54,55m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+
+    <!-- Kadran ibresi -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#e53935"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M54,55 L60,49" />
+
+    <!-- Kadran merkezi nokta -->
+    <path
+        android:fillColor="#1a6bb5"
+        android:pathData="M54,55m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+
+    <!-- Sol küçük gösterge dairesi -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1976d2"
+        android:strokeWidth="1.5"
+        android:pathData="M38,55m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1976d2"
+        android:strokeWidth="1.5"
+        android:pathData="M38,55 L38,52" />
+
+    <!-- Sağ küçük gösterge dairesi -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1976d2"
+        android:strokeWidth="1.5"
+        android:pathData="M70,55m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1976d2"
+        android:strokeWidth="1.5"
+        android:pathData="M70,55 L73,52" />
+
+    <!-- Alt veri çubukları -->
+    <path
+        android:fillColor="#1976d2"
+        android:pathData="M31,67 L43,67 Q44,67 44,68 L44,70 Q44,71 43,71 L31,71 Q30,71 30,70 L30,68 Q30,67 31,67 Z" />
+    <path
+        android:fillColor="#42a5f5"
+        android:pathData="M46,67 L62,67 Q63,67 63,68 L63,70 Q63,71 62,71 L46,71 Q45,71 45,70 L45,68 Q45,67 46,67 Z" />
+    <path
+        android:fillColor="#90caf9"
+        android:pathData="M65,67 L77,67 Q78,67 78,68 L78,70 Q78,71 77,71 L65,71 Q64,71 64,70 L64,68 Q64,67 65,67 Z" />
+
+    <!-- Su damlası simgesi (sağ alt köşe) -->
+    <path
+        android:fillColor="#29b6f6"
+        android:pathData="M68,78 Q68,74 72,72 Q76,74 76,78 Q76,82 72,82 Q68,82 68,78 Z" />
+
+</vector>
